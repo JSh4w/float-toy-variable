@@ -1211,6 +1211,12 @@ var float16 = (function (exports) {
       handler.ownKeys = wrapper => Reflect.ownKeys(wrapper);
     }
 
+    /**
+     * Creates a Float16Array from an input.
+     * @param {Array|ArrayLike|Iterable} input - The input to create the Float16Array from.
+     * @param {number} [byteOffset] - The byte offset to start from.
+     * @param {number} [length] - The length of the array.
+     */
     class Float16Array extends Uint16Array {
       constructor(input, byteOffset, length) {
         // input Float16Array
