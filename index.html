@@ -165,7 +165,7 @@
         // Initialize with PI or current value
         const currentValue = document.getElementById('decimal-input').value || '3.14159';
         try {
-          floatX.setFloatXRNE(0, parseFloat(currentValue));
+          floatX.setFloatXRNE(0, parseFloat(0)); // clear value to zero 
         } catch (e) {
           console.error("Error initializing float:", e);
           document.getElementById('decimal-input').value = '3.14159';
@@ -178,7 +178,7 @@
         // Update displays
         updateDisplays();
       }
-      
+            
       function updateBitTable() {
         const bitIndices = document.getElementById('bit-indices');
         const bitValues = document.getElementById('bit-values');
@@ -246,11 +246,10 @@
         try {
           // Get the components
           const bits = floatX.getFloatXRNEBits(0);
-          const sign = (bits >> 63n) & 1n;
+          const sign = (bits >> BigInt(floatX.width -1)) & 1n;
           
           // Calculate the position of exponent and mantissa in the 64-bit value
-          const expStart = 63 - floatX.expWidth;
-          const expBits = (bits >> BigInt(expStart)) & floatX.expMask;
+          const expBits = (bits >> BigInt(floatX.mantWidth)) & floatX.expMask;
           const mantBits = bits & floatX.mantMask;
           
           // Calculate actual values
@@ -278,7 +277,7 @@
           
           // Update the display elements
           document.getElementById('sign-value').textContent = sign === 1n ? "-1" : "+1";
-          document.getElementById('exponent-value').textContent = `${expBits} (biased), ${expValue} (unbiased)`;
+          document.getElementById('exponent-value').textContent = `${expBits} (unbiased), ${expValue} (biased)`;
           document.getElementById('mantissa-value').textContent = `${mantBits} (raw), ${mantValue === 0 ? "0" : `1.${mantValue.toString().substring(2) || '0'}`} (value)`;
           
           // Special cases for formula display
@@ -300,6 +299,11 @@
           document.getElementById('decimal-value').textContent = value;
           
           // Update hex input
+          // const totalBits = 1 + bits.expWidth + bits.mantWidth;
+          // const formatMask = ((1n << BigInt(totalBits)) -1n) << BigInt(64 - totalBits);
+          // const maskedBits = bits & formatMask;
+          // const hexDigits = Math.ceil(totalBits / 4);
+          // const shiftedBits = maskedBits >> BigInt(64 - totalbits);
           const hexString = bits.toString(16).padStart(16, '0').toUpperCase();
           document.getElementById('hex-input').value = hexString;
         } catch (e) {
@@ -346,10 +350,10 @@
             throw new Error("Invalid hexadecimal format");
           }
           
-          const bits = BigInt(`0x${hexValue}`);
+          const hexBits = BigInt(`0x${hexValue}`);
           
           // Update the bits directly
-          new BigInt64Array(floatX.storage.buffer)[0] = bits;
+          new BigInt64Array(floatX.storage.buffer)[0] = hexBits;
           
           // Get the new value and update displays
           updateBitTable();
