@@ -2,26 +2,41 @@ export class FloatXRNE {
     constructor(length, expWidth, mantWidth) {
         this.expWidth = expWidth;
         this.mantWidth = mantWidth;
+        this.width = expWidth + mantWidth + 1;
         this.storage = new Float64Array(length);
         
         this.expMask = (1n << BigInt(expWidth)) - 1n;
         this.mantMask = (1n << BigInt(mantWidth)) - 1n;
         this.expBias = (1n << BigInt(expWidth - 1)) - 1n;
+
+        this.negativeZero = 1n << BigInt(this.width - 1);
+        this.inf = BigInt(this.expMask) << BigInt(this.width - 1 - this.expWidth);
+        this.negInf = (1n << BigInt(this.width)) | this.inf;
+        this.nan = this.inf + 1n;
     }
 
     setFloatXRNE(index, value) {
+        // takes decimal value
         if (index < 0 || index >= this.storage.length) return;
         
         if (value === 0) {
-            this.storage[index] = Object.is(value, -0) ? -0 : 0;
+            new BigInt64Array(this.storage.buffer)[index] = Object.is(value, -0) ? this.negativeZero : 0n;
             return;
         }
-        
-        if (!Number.isFinite(value)) {
-            this.storage[index] = value;
+        if (value === Infinity) {
+            new BigInt64Array(this.storage.buffer)[index] = this.inf;
+            return;         
+        }
+        if (value === -Infinity) {
+            new BigInt64Array(this.storage.buffer)[index] = this.negInf;
+            return;         
+        }
+        if (Number.isNaN(value)) {
+            new BigInt64Array(this.storage.buffer)[index] = this.nan;
             return;
         }
 
+        
         const sign = value < 0 ? 1n : 0n;
         value = Math.abs(value);
         
@@ -49,32 +64,38 @@ export class FloatXRNE {
         
         // Handle range limits
         if (exp < -Number(this.expBias) + 1) {
-            this.storage[index] = sign ? -0 : 0;
+            new BigInt64Array(this.storage.buffer)[index] = Object.is(value, -0) ? this.negativeZero : 0n;
             return;
         }
         if (exp > Number(this.expBias)) {
-            this.storage[index] = sign ? -Infinity : Infinity;
+            new BigInt64Array(this.storage.buffer)[index] = sign ? this.negInf : this.inf;
             return;
         }
 
         const biasedExp = BigInt(exp + Number(this.expBias));
-        const bits = (sign << 63n) | 
-                    (biasedExp << BigInt(63 - this.expWidth)) |
+        const bits = (sign << BigInt(this.width-1)) | 
+                    (biasedExp << BigInt(this.mantWidth)) |
                     (BigInt(mant) & this.mantMask);
                     
         new BigInt64Array(this.storage.buffer)[index] = bits;
     }
     
-    getFloatXRNE(index) {
-        if (!Number.isFinite(this.storage[index])) {
-            return this.storage[index];
-        }
-    
+    getFloatXRNE(index) {    
         const bits = new BigInt64Array(this.storage.buffer)[index];
-        const sign = (bits >> 63n) & 1n;
-        const exp = ((bits >> BigInt(63 - this.expWidth)) & this.expMask) - this.expBias;
+        if (bits === this.inf) {
+            return Infinity; 
+        }
+        if (bits === this.negInf) {
+            return -Infinity;
+        }
+        if (bits === this.nan) {
+            return NaN;
+        }
+
+        const sign = (bits >> BigInt(this.width-1)) & 1n;
+        const exp = ((bits >> BigInt(this.mantWidth)) & this.expMask) - this.expBias;
         const mant = bits & this.mantMask;
-    
+
         if (exp === -this.expBias && mant === 0n) {
             return sign ? -0 : 0;
         }
@@ -84,21 +105,6 @@ export class FloatXRNE {
     }
     
     getFloatXRNEBits(index) {
-        if (!Number.isFinite(this.storage[index])) {
-          if (this.storage[index] === 0) {
-            // Handle zero
-            return Object.is(this.storage[index], -0) ? 
-              (1n << 63n) : 0n;
-          } else if (Number.isNaN(this.storage[index])) {
-            // Handle NaN
-            return (this.expMask << BigInt(63 - this.expWidth)) | 1n;
-          } else {
-            // Handle Infinity
-            const sign = this.storage[index] < 0 ? 1n : 0n;
-            return (sign << 63n) | (this.expMask << BigInt(63 - this.expWidth));
-          }
-        }
-        
         return new BigInt64Array(this.storage.buffer)[index];
       }
       
@@ -106,12 +112,21 @@ export class FloatXRNE {
         const bits = this.getFloatXRNEBits(index);
         let result = '';
         
-        for (let i = 63; i >= 0; i--) {
+        for (let i = BigInt(this.width-1); i >= 0; i--) {
           result += ((bits >> BigInt(i)) & 1n).toString();
         }
-        
+        // returns in right aligned format 
         return result;
       }
+
+    clearUnusedBits(index) { 
+        const totalBits = 1 + this.expWidth + this.mantWidth;
+        // Mask for preserved bits
+        const usedBitsMask = ((1n << BigInt(totalBits)) - 1n) << BigInt(64 - totalBits);
+        
+        const bits = new BigInt64Array(this.storage.buffer)[index];
+        new BigInt64Array(this.storage.buffer)[index] = bits & usedBitsMask;
+    }
 }
 
 export function getFloatXRNE(floatXRNE, index) {
@@ -139,4 +154,11 @@ export function getFloatXRNEBitString(floatXRNE, index) {
         throw new TypeError("First argument must be an instance of FloatXRNE");
     }
     floatXRNE.getFloatXRNEBitString(index);
+}
+
+export function clearUnusedBits(floatXRNE) {
+    if (!(floatXRNE instanceof FloatXRNE)) {
+        throw new TypeError("First argument must be an instance of FloatXRNE");
+    }
+    floatXRNE.clearUnusedBits(index);
 }
