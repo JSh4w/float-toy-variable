@@ -171,7 +171,7 @@
           document.getElementById('decimal-input').value = '3.14159';
           floatX.setFloatXRNE(0, 3.14159);
         }
-        
+        floatX.setFloatXRNE(0, 3.14159);
         // Update bit table
         updateBitTable();
         
@@ -230,7 +230,9 @@
       }
       
       function toggleBit(position) {
-        const normBit = position - floatX.width ;
+        console.log(position);
+        const normBit = position - (64 - floatX.width) ;
+        console.log(normBit);
         const bits = floatX.getFloatXRNEBits(0);
         const newBits = bits ^ (1n << BigInt(normBit));
         
@@ -299,7 +301,6 @@
           document.getElementById('decimal-value').textContent = value;
           
           const pad = Math.ceil(floatX.width /4); 
-          console.log(pad);
           const hexString = bits.toString(16).padStart(pad, '0').toUpperCase();
           document.getElementById('hex-input').value = hexString;
         } catch (e) {
