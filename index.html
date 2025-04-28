@@ -171,7 +171,7 @@
           document.getElementById('decimal-input').value = '3.14159';
           floatX.setFloatXRNE(0, 3.14159);
         }
-        
+        floatX.setFloatXRNE(0, 3.14159);
         // Update bit table
         updateBitTable();
         
@@ -191,8 +191,7 @@
         const bitString = floatX.getFloatXRNEBitString(0);
         
         // Calculate bit positions needed
-        const totalBits = 1 + expWidth + mantWidth;  // sign + exp + mant
-        const startBit = 64 - totalBits;  // Where to start in the 64-bit representation
+        const startBit = 64 - floatX.width;  // Where to start in the 64-bit representation
         
         // Create table based on bit layout
         for (let i = 0; i < 64; i++) {
@@ -231,8 +230,11 @@
       }
       
       function toggleBit(position) {
+        console.log(position);
+        const normBit = position - (64 - floatX.width) ;
+        console.log(normBit);
         const bits = floatX.getFloatXRNEBits(0);
-        const newBits = bits ^ (1n << BigInt(position));
+        const newBits = bits ^ (1n << BigInt(normBit));
         
         // Update the bits directly
         new BigInt64Array(floatX.storage.buffer)[0] = newBits;
@@ -298,13 +300,8 @@
           
           document.getElementById('decimal-value').textContent = value;
           
-          // Update hex input
-          // const totalBits = 1 + bits.expWidth + bits.mantWidth;
-          // const formatMask = ((1n << BigInt(totalBits)) -1n) << BigInt(64 - totalBits);
-          // const maskedBits = bits & formatMask;
-          // const hexDigits = Math.ceil(totalBits / 4);
-          // const shiftedBits = maskedBits >> BigInt(64 - totalbits);
-          const hexString = bits.toString(16).padStart(16, '0').toUpperCase();
+          const pad = Math.ceil(floatX.width /4); 
+          const hexString = bits.toString(16).padStart(pad, '0').toUpperCase();
           document.getElementById('hex-input').value = hexString;
         } catch (e) {
           console.error("Error updating displays:", e);
