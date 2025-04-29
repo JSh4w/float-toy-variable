@@ -15,6 +15,18 @@ export class FloatXRNE {
         this.nan = this.inf + 1n;
     }
 
+    isNaN(index) {
+        const bits = new BigInt64Array(this.storage.buffer)[index];
+        // Check if the exponent is all ones and the mantissa is non-zero
+        return ((bits >> BigInt(this.mantWidth)) & this.expMask) === this.expMask && (bits & this.mantMask) !== 0n;
+    }
+
+    isInf(index) {
+        const bits = new BigInt64Array(this.storage.buffer)[index];
+        // Check if the exponent is all ones and the mantissa is zero
+        return ((bits >> BigInt(this.mantWidth)) & this.expMask) === this.expMask && (bits & this.mantMask) === 0n;
+    }
+
     setFloatXRNE(index, value) {
         // takes decimal value
         if (index < 0 || index >= this.storage.length) return;

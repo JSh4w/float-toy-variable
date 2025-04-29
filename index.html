@@ -40,8 +40,6 @@
         <label>Hex:</label>
         <input type="text" id="hex-input" value="">
         
-        <button id="update-value">Update</button>
-        
         <select id="preset-values">
           <option value="">Common Values</option>
           <option value="0">Zero (0)</option>
@@ -137,19 +135,16 @@
         initializeFloat();
       });
       
-      document.getElementById('update-value').addEventListener('click', updateFromDecimal);
       document.getElementById('decimal-input').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
           updateFromDecimal();
         }
       });
       
-      document.getElementById('hex-input').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-          updateFromHex();
-        }
+      document.getElementById('hex-input').addEventListener('input', function() {
+        updateFromHex();
       });
-      
+
       document.getElementById('preset-values').addEventListener('change', function() {
         if (this.value) {
           document.getElementById('decimal-input').value = this.value;
@@ -242,6 +237,8 @@
         // Update the displays
         updateBitTable();
         updateDisplays();
+        document.getElementById('decimal-input').value = floatX.getFloatXRNE(0);
+
       }
       
       function updateDisplays() {
@@ -260,15 +257,12 @@
           
           // Special cases
           const value = floatX.getFloatXRNE(0);
-          
-          if (!Number.isFinite(value)) {
-            if (Number.isNaN(value)) {
-              expValue = "NaN";
-              mantValue = "NaN";
-            } else {
-              expValue = "Infinity";
-              mantValue = "0";
-            }
+          if (floatX.isInf(0)){
+            expValue = "Infinity";
+            mantValue = "0";
+          } else if (floatX.isNaN(0)){
+            expValue = "NaN";
+            mantValue = "NaN";
           } else if (value === 0) {
             expValue = "0";
             mantValue = "0";
@@ -283,12 +277,10 @@
           document.getElementById('mantissa-value').textContent = `${mantBits} (raw), ${mantValue === 0 ? "0" : `1.${mantValue.toString().substring(2) || '0'}`} (value)`;
           
           // Special cases for formula display
-          if (!Number.isFinite(value)) {
-            if (Number.isNaN(value)) {
+          if (floatX.isNaN(0)) {
               document.getElementById('formula-value').textContent = 'NaN';
-            } else {
+          } else if (floatX.isInf(0)) {
               document.getElementById('formula-value').textContent = `${value < 0 ? '-' : ''}Infinity`;
-            }
           } else if (value === 0) {
             document.getElementById('formula-value').textContent = `${Object.is(value, -0) ? '-' : ''}0`;
           } else if (expBits === 0n && mantBits !== 0n) {
@@ -299,9 +291,13 @@
           }
           
           document.getElementById('decimal-value').textContent = value;
+
           
           const pad = Math.ceil(floatX.width /4); 
-          const hexString = bits.toString(16).padStart(pad, '0').toUpperCase();
+          let hexString = bits.toString(16).padStart(pad, '0').toUpperCase();
+          if (hexString.length > pad) { // Check if hexString length exceeds pad
+            hexString = hexString.slice(-pad); // Cut hexString to the last 'pad' characters
+          }
           document.getElementById('hex-input').value = hexString;
         } catch (e) {
           console.error("Error updating displays:", e);
@@ -343,11 +339,9 @@
       function updateFromHex() {
         try {
           const hexValue = document.getElementById('hex-input').value.replace(/^0x/i, '');
-          if (!/^[0-9A-Fa-f]+$/.test(hexValue)) {
-            throw new Error("Invalid hexadecimal format");
-          }
+          const validHexValue = hexValue.replace(/[^0-9A-Fa-f]/g, '');
           
-          const hexBits = BigInt(`0x${hexValue}`);
+          const hexBits = BigInt(`0x${validHexValue}`);
           
           // Update the bits directly
           new BigInt64Array(floatX.storage.buffer)[0] = hexBits;
@@ -355,7 +349,6 @@
           // Get the new value and update displays
           updateBitTable();
           updateDisplays();
-          
           // Update the decimal input
           document.getElementById('decimal-input').value = floatX.getFloatXRNE(0);
         } catch (e) {
