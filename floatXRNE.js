@@ -11,8 +11,8 @@ export class FloatXRNE {
 
         this.negativeZero = 1n << BigInt(this.width - 1);
         this.inf = BigInt(this.expMask) << BigInt(this.width - 1 - this.expWidth);
-        this.negInf = (1n << BigInt(this.width)) | this.inf;
-        this.nan = this.inf + 1n;
+        this.negInf = (1n << BigInt(this.width - 1)) | this.inf;
+        this.nan = this.inf + (1n << BigInt(this.mantWidth - 1));
     }
 
     isNaN(index) {
@@ -94,13 +94,14 @@ export class FloatXRNE {
     
     getFloatXRNE(index) {    
         const bits = new BigInt64Array(this.storage.buffer)[index];
-        if (bits === this.inf) {
-            return Infinity; 
+        if (this.isInf(index)) {
+            if (bits >> BigInt(this.width - 1)) {
+                return -Infinity; 
+            } else {
+                return Infinity;
+            }
         }
-        if (bits === this.negInf) {
-            return -Infinity;
-        }
-        if (bits === this.nan) {
+        if (this.isNaN(index)) {
             return NaN;
         }
 

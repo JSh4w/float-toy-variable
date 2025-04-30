@@ -155,7 +155,6 @@
       
       function initializeFloat() {
         floatX = new FloatXRNE(1, expWidth, mantWidth);
-        console.log(floatX);
         
         // Initialize with PI or current value
         const currentValue = document.getElementById('decimal-input').value || '3.14159';
@@ -225,9 +224,7 @@
       }
       
       function toggleBit(position) {
-        console.log(position);
         const normBit = position - (64 - floatX.width) ;
-        console.log(normBit);
         const bits = floatX.getFloatXRNEBits(0);
         const newBits = bits ^ (1n << BigInt(normBit));
         
@@ -257,11 +254,14 @@
           
           // Special cases
           const value = floatX.getFloatXRNE(0);
-          if (floatX.isInf(0)){
+          if (value === Infinity){
             expValue = "Infinity";
-            mantValue = "0";
-          } else if (floatX.isNaN(0)){
-            expValue = "NaN";
+            mantValue = "Infinity";
+          } else if (value === -Infinity){
+            expValue = "-Infinity";
+            mantValue = "-Infinity";
+          } else if (value === NaN){
+            expValue= "NaN";
             mantValue = "NaN";
           } else if (value === 0) {
             expValue = "0";
@@ -313,9 +313,9 @@
           // Handle special values
           if (input.toLowerCase() === 'nan') {
             value = NaN;
-          } else if (input.toLowerCase() === 'infinity' || input === 'Inf') {
+          } else if (input.toLowerCase() === 'infinity' || input.toLowerCase() === 'inf') {
             value = Infinity;
-          } else if (input.toLowerCase() === '-infinity' || input === '-Inf') {
+          } else if (input.toLowerCase() === '-infinity' || input.toLowerCase() === '-inf') {
             value = -Infinity;
           } else if (input === '-0') {
             value = -0;
@@ -326,7 +326,6 @@
               return;
             }
           }
-          
           floatX.setFloatXRNE(0, value);
           updateBitTable();
           updateDisplays();
